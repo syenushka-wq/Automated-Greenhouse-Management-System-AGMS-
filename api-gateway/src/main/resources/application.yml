@@ -1,0 +1,15 @@
+server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: zone-service
+          uri: lb://ZONE-SERVICE
+          predicates:
+            - Path=/api/zones/**
+        - id: sensor-service
+          uri: lb://SENSOR-SERVICE
+          predicates:
+            - Path=/api/sensors/**
