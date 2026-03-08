@@ -1,20 +1,25 @@
 package com.agms.apigateway.config;
 
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 
-import java.util.Set;
+import java.time.Duration;
 
 @Configuration
-public class GatewayConfig {
+public class RouteConfig {
 
     @Bean
-    public com.agms.apigateway.config.RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
+
                 // Zone Service Routes
                 .route("zone-service", r -> r
                         .path("/api/zones/**")
+                        .and().method(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.DELETE)
                         .filters(f -> f
                                 .circuitBreaker(config -> config
                                         .setName("zoneServiceBreaker")
@@ -22,8 +27,8 @@ public class GatewayConfig {
                                 .retry(config -> config
                                         .setRetries(3)
                                         .setStatuses(HttpStatus.BAD_GATEWAY, HttpStatus.SERVICE_UNAVAILABLE)
-                                        .setMethods(org.springframework.http.HttpMethod.GET,
-                                                org.springframework.http.HttpMethod.POST))
+                                        .setMethods(HttpMethod.GET, HttpMethod.POST)
+                                        .setBackoff(Duration.ofMillis(100), Duration.ofMillis(1000), 2, true))
                                 .addRequestHeader("X-Request-Start", String.valueOf(System.currentTimeMillis()))
                                 .addResponseHeader("X-Service-Name", "zone-service")
                                 .removeRequestHeader("Cookie"))
@@ -32,6 +37,7 @@ public class GatewayConfig {
                 // Sensor Service Routes
                 .route("sensor-service", r -> r
                         .path("/api/sensors/**")
+                        .and().method(HttpMethod.GET)
                         .filters(f -> f
                                 .circuitBreaker(config -> config
                                         .setName("sensorServiceBreaker")
@@ -39,7 +45,7 @@ public class GatewayConfig {
                                 .retry(config -> config
                                         .setRetries(2)
                                         .setStatuses(HttpStatus.BAD_GATEWAY, HttpStatus.SERVICE_UNAVAILABLE)
-                                        .setMethods(org.springframework.http.HttpMethod.GET))
+                                        .setMethods(HttpMethod.GET))
                                 .addResponseHeader("X-Service-Name", "sensor-service")
                                 .removeRequestHeader("Cookie"))
                         .uri("lb://SENSOR-SERVICE"))
@@ -47,6 +53,7 @@ public class GatewayConfig {
                 // Automation Service Routes
                 .route("automation-service", r -> r
                         .path("/api/automation/**")
+                        .and().method(HttpMethod.GET, HttpMethod.POST)
                         .filters(f -> f
                                 .circuitBreaker(config -> config
                                         .setName("automationServiceBreaker")
@@ -54,8 +61,7 @@ public class GatewayConfig {
                                 .retry(config -> config
                                         .setRetries(2)
                                         .setStatuses(HttpStatus.BAD_GATEWAY, HttpStatus.SERVICE_UNAVAILABLE)
-                                        .setMethods(org.springframework.http.HttpMethod.GET,
-                                                org.springframework.http.HttpMethod.POST))
+                                        .setMethods(HttpMethod.GET, HttpMethod.POST))
                                 .addResponseHeader("X-Service-Name", "automation-service")
                                 .removeRequestHeader("Cookie"))
                         .uri("lb://AUTOMATION-SERVICE"))
@@ -63,6 +69,7 @@ public class GatewayConfig {
                 // Crop Service Routes
                 .route("crop-service", r -> r
                         .path("/api/crops/**")
+                        .and().method(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT)
                         .filters(f -> f
                                 .circuitBreaker(config -> config
                                         .setName("cropServiceBreaker")
@@ -70,26 +77,25 @@ public class GatewayConfig {
                                 .retry(config -> config
                                         .setRetries(2)
                                         .setStatuses(HttpStatus.BAD_GATEWAY, HttpStatus.SERVICE_UNAVAILABLE)
-                                        .setMethods(org.springframework.http.HttpMethod.GET,
-                                                org.springframework.http.HttpMethod.POST,
-                                                org.springframework.http.HttpMethod.PUT))
+                                        .setMethods(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT))
                                 .addResponseHeader("X-Service-Name", "crop-service")
                                 .removeRequestHeader("Cookie"))
                         .uri("lb://CROP-SERVICE"))
 
-                // Auth Service Routes (Public - No JWT)
+                // Auth Service Routes (Public)
                 .route("auth-service", r -> r
                         .path("/auth/**")
+                        .and().method(HttpMethod.POST)
                         .filters(f -> f
-                                .removeRequestHeader("Cookie")
-                                .removeRequestHeader("Authorization")
                                 .circuitBreaker(config -> config
                                         .setName("authServiceBreaker")
                                         .setFallbackUri("forward:/fallback/auth"))
                                 .retry(config -> config
                                         .setRetries(3)
                                         .setStatuses(HttpStatus.BAD_GATEWAY, HttpStatus.SERVICE_UNAVAILABLE)
-                                        .setMethods(org.springframework.http.HttpMethod.POST))
+                                        .setMethods(HttpMethod.POST))
+                                .removeRequestHeader("Cookie")
+                                .removeRequestHeader("Authorization")
                                 .addResponseHeader("X-Service-Name", "auth-service"))
                         .uri("lb://AUTH-SERVICE"))
 

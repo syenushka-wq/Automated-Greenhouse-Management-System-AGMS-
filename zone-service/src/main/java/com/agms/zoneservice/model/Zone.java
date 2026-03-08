@@ -1,7 +1,7 @@
 package com.agms.zoneservice.model;
 
-import com.agms.zoneservice.Entity.Zone;
-import com.agms.zoneservice.Repository.MongoRepository;
+import com.agms.zoneservice.model.Zone;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
