@@ -2,8 +2,11 @@ package com.agms.zoneservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication
+@EnableDiscoveryClient
+@com.agms.zoneservice.EnableFeignClients
 public class ZoneServiceApplication {
 
     public static void main(String[] args) {
