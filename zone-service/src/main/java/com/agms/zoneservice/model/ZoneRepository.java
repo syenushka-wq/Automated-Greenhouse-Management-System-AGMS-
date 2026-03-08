@@ -1,9 +1,8 @@
-package com.agms.zoneservice.Repository;
+package com.agms.zoneservice.model;
 
 import com.agms.zoneservice.Entity.Zone;
+import com.agms.zoneservice.Repository.MongoRepository;
 import org.springframework.stereotype.Repository;
-
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -11,14 +10,4 @@ import java.util.Optional;
 public interface ZoneRepository extends MongoRepository<Zone, String> {
     Optional<Zone> findByDeviceId(String deviceId);
     List<Zone> findByUserId(String userId);
-
-    void deleteById(Long id);
-
-    Optional<Zone> findById(Long id);
-
-    Zone save(Zone zone);
-
-    Collection<Object> findAll();
-
-    boolean existsById(String id);
 }

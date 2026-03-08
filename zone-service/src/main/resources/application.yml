@@ -5,15 +5,10 @@ spring:
   application:
     name: zone-service
 
-  datasource:
-    url: jdbc:mysql://localhost:3306/agms_zone
-    username: root
-    password: root
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/agms_zone
+      database: agms_zone
 
 eureka:
   client:

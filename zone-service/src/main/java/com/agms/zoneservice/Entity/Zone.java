@@ -2,6 +2,8 @@ package com.agms.zoneservice.Entity;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 public class Zone {
 
@@ -51,5 +53,18 @@ public class Zone {
 
     public void setDeviceId(String deviceId) {
         this.deviceId = deviceId;
+    }
+
+    public void setUpdatedAt(LocalDateTime now) {
+
+    }
+
+    public void setId(String string) {
+    }
+
+    public void setCreatedAt(LocalDateTime now) {
+    }
+
+    public void setType(boolean type) {
     }
 }

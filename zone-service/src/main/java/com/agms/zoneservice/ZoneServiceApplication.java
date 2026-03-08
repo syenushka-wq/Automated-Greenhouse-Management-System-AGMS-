@@ -6,11 +6,10 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@com.agms.zoneservice.EnableFeignClients
+@EnableFeignClients
 public class ZoneServiceApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(ZoneServiceApplication.class, args);
     }
-
 }
