@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.Map;
 
-@FeignClient(name = "iot-integration", url = "${iot.external.api.url}")
 public interface IoTIntegrationClient {
 
     @PostMapping("/devices")
