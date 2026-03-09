@@ -1,9 +1,9 @@
 package com.agms.zoneservice.controller;
 
-import com.agms.zoneservice.service.ZoneDTO;
+import com.agms.zoneservice.dto.ZoneDTO;
+import com.agms.zoneservice.service.ZoneService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,74 +14,52 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ZoneController {
 
-    private final com.agms.zone.service.ZoneService zoneService;
+    private final ZoneService zoneService;
 
-    // -------------------------
-    // Test API
-    // -------------------------
     @GetMapping("/test")
-    public ResponseEntity<String> test() {
-        return ResponseEntity.ok("Zone Service is running");
+    public String test() {
+        return "Zone Service Running";
     }
 
-    // -------------------------
-    // Create Zone
-    // -------------------------
     @PostMapping
     public ResponseEntity<ZoneDTO> createZone(
-            @Valid @RequestBody ZoneDTO zoneDTO,
-            @RequestHeader(value = "Authorization", required = false) String token,
-            @RequestHeader(value = "X-User-Id", required = false) String userId) {
+            @Valid @RequestBody ZoneDTO dto) {
 
-        String actualToken = extractToken(token);
-
-        if (userId != null) {
-            zoneDTO.setUserId(userId);
-        }
-
-        ZoneDTO createdZone = zoneService.createZone(zoneDTO, actualToken);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdZone);
+        return ResponseEntity.ok(zoneService.createZone(dto));
     }
 
-    // -------------------------
-    // Get Zone By ID
-    // -------------------------
-    @GetMapping("/id/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<ZoneDTO> getZone(@PathVariable String id) {
 
-        ZoneDTO zone = zoneService.getZone(id);
-
-        return ResponseEntity.ok(zone);
+        return ResponseEntity.ok(zoneService.getZone(id));
     }
 
-    // -------------------------
-    // Get Zone By Device ID
-    // -------------------------
     @GetMapping("/device/{deviceId}")
     public ResponseEntity<ZoneDTO> getZoneByDeviceId(@PathVariable String deviceId) {
 
-        ZoneDTO zone = zoneService.getZoneByDeviceId(deviceId);
-
-        return ResponseEntity.ok(zone);
+        return ResponseEntity.ok(zoneService.getZoneByDeviceId(deviceId));
     }
 
-    // -------------------------
-    // Update Zone
-    // -------------------------
+    @GetMapping
+    public ResponseEntity<List<ZoneDTO>> getAllZones() {
+
+        return ResponseEntity.ok(zoneService.getAllZones());
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<ZoneDTO>> getZonesByUser(@PathVariable String userId) {
+
+        return ResponseEntity.ok(zoneService.getZonesByUser(userId));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<ZoneDTO> updateZone(
             @PathVariable String id,
-            @Valid @RequestBody ZoneDTO zoneDTO) {
+            @RequestBody ZoneDTO dto) {
 
-        ZoneDTO updatedZone = zoneService.updateZone(id, zoneDTO);
-
-        return ResponseEntity.ok(updatedZone);
+        return ResponseEntity.ok(zoneService.updateZone(id, dto));
     }
 
-    // -------------------------
-    // Delete Zone
-    // -------------------------
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteZone(@PathVariable String id) {
 
@@ -90,37 +68,4 @@ public class ZoneController {
         return ResponseEntity.noContent().build();
     }
 
-    // -------------------------
-    // Get All Zones
-    // -------------------------
-    @GetMapping
-    public ResponseEntity<List<ZoneDTO>> getAllZones() {
-
-        List<ZoneDTO> zones = zoneService.getAllZones();
-
-        return ResponseEntity.ok(zones);
-    }
-
-    // -------------------------
-    // Get Zones By User
-    // -------------------------
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<ZoneDTO>> getZonesByUser(@PathVariable String userId) {
-
-        List<ZoneDTO> zones = zoneService.getZonesByUser(userId);
-
-        return ResponseEntity.ok(zones);
-    }
-
-    // -------------------------
-    // Helper Method
-    // -------------------------
-    private String extractToken(String token) {
-
-        if (token != null && token.startsWith("Bearer ")) {
-            return token.substring(7);
-        }
-
-        return token;
-    }
 }
