@@ -1,13 +1,23 @@
 package com.agms.zoneservice.model;
 
-import com.agms.zoneservice.model.Zone;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.stereotype.Repository;
-import java.util.List;
-import java.util.Optional;
+import jakarta.persistence.*;
+import lombok.*;
 
-@Repository
-public interface ZoneRepository extends MongoRepository<Zone, String> {
-    Optional<Zone> findByDeviceId(String deviceId);
-    List<Zone> findByUserId(String userId);
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Zone {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
+
+    private String name;
+
+    private String deviceId;
+
+    private String userId;
+
 }
