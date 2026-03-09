@@ -1,11 +1,12 @@
 package com.agms.sensorservice.model;
 
 public class SensorDTO {
+
     private String id;
     private String name;
     private double value;
 
-    // getters and setters
+    // Getters and Setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
