@@ -2,23 +2,18 @@ server:
   port: 8888
 
 spring:
-  application:
-    name: config-server
   cloud:
     config:
       server:
         git:
-          uri: https://github.com/yourusername/agms-config-repo
+          uri: https://github.com/<your-github-username>/agms-config-repo
           default-label: main
-          search-paths: '{application}'
-  security:
-    user:
-      name: config-user
-      password: config-password
+          clone-on-start: true
+      allowOverride: true
 
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    fetch-registry: true
-    register-with-eureka: true
+# Optional: log level for debug
+logging:
+  level:
+    org.springframework.cloud: DEBUG
+
+
