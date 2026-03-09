@@ -1,65 +1,77 @@
 package com.agms.apigateway.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.Map;
 
+/**
+ * FallbackController
+ * ===================
+ * Handles Circuit Breaker fallback responses when a downstream microservice
+ * is unavailable or times out.
+ *
+ * Returns HTTP 503 Service Unavailable with a descriptive JSON body
+ * so the frontend / caller gets a clear message instead of a raw error.
+ *
+ * Triggered by: GatewayConfig circuit breaker filters
+ *               → forward:/fallback/{service}
+ */
+@Slf4j
 @RestController
 @RequestMapping("/fallback")
 public class FallbackController {
 
-    @GetMapping("/zones")
+    // ── Zone Management Service fallback ────────────────────────────────────
+    @GetMapping("/zone")
+    @PostMapping("/zone")
     public ResponseEntity<Map<String, Object>> zoneFallback() {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of(
-                        "message", "Zone Service is currently unavailable. Please try again later.",
-                        "timestamp", LocalDateTime.now(),
-                        "service", "zone-service"
-                ));
+        log.error("[Fallback] Zone Management Service unavailable");
+        return buildFallbackResponse("Zone Management Service", "/api/zones");
     }
 
-    @GetMapping("/sensors")
+    // ── Sensor Telemetry Service fallback ───────────────────────────────────
+    @GetMapping("/sensor")
+    @PostMapping("/sensor")
     public ResponseEntity<Map<String, Object>> sensorFallback() {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of(
-                        "message", "Sensor Service is currently unavailable. Please try again later.",
-                        "timestamp", LocalDateTime.now(),
-                        "service", "sensor-service"
-                ));
+        log.error("[Fallback] Sensor Telemetry Service unavailable");
+        return buildFallbackResponse("Sensor Telemetry Service", "/api/sensors");
     }
 
+    // ── Automation & Control Service fallback ───────────────────────────────
     @GetMapping("/automation")
+    @PostMapping("/automation")
     public ResponseEntity<Map<String, Object>> automationFallback() {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of(
-                        "message", "Automation Service is currently unavailable. Please try again later.",
-                        "timestamp", LocalDateTime.now(),
-                        "service", "automation-service"
-                ));
+        log.error("[Fallback] Automation & Control Service unavailable");
+        return buildFallbackResponse("Automation & Control Service", "/api/automation");
     }
 
-    @GetMapping("/crops")
+    // ── Crop Inventory Service fallback ─────────────────────────────────────
+    @GetMapping("/crop")
+    @PostMapping("/crop")
     public ResponseEntity<Map<String, Object>> cropFallback() {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of(
-                        "message", "Crop Service is currently unavailable. Please try again later.",
-                        "timestamp", LocalDateTime.now(),
-                        "service", "crop-service"
-                ));
+        log.error("[Fallback] Crop Inventory Service unavailable");
+        return buildFallbackResponse("Crop Inventory Service", "/api/crops");
     }
 
-    @GetMapping("/auth")
-    public ResponseEntity<Map<String, Object>> authFallback() {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+    // ── Helper ──────────────────────────────────────────────────────────────
+    private ResponseEntity<Map<String, Object>> buildFallbackResponse(
+            String serviceName, String path) {
+
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(Map.of(
-                        "message", "Auth Service is currently unavailable. Please try again later.",
-                        "timestamp", LocalDateTime.now(),
-                        "service", "auth-service"
+                        "status", 503,
+                        "error", "Service Unavailable",
+                        "message", serviceName + " is currently unavailable. Please try again later.",
+                        "path", path,
+                        "timestamp", LocalDateTime.now().toString()
                 ));
     }
 }

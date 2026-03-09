@@ -1,120 +1,92 @@
 package com.agms.apigateway.config;
 
+import org.springframework.cloud.gateway.server.mvc.handler.GatewayRouterFunctions;
+import org.springframework.cloud.gateway.server.mvc.handler.HandlerFunctions;
+import org.springframework.cloud.gateway.server.mvc.filter.CircuitBreakerFilterFunctions;
+import org.springframework.cloud.gateway.server.mvc.filter.LoadBalancerFilterFunctions;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
+import org.springframework.web.servlet.function.RouterFunction;
+import org.springframework.web.servlet.function.ServerResponse;
 
-import java.util.Set;
+import java.net.URI;
 
+import static org.springframework.cloud.gateway.server.mvc.filter.FilterFunctions.setPath;
+import static org.springframework.cloud.gateway.server.mvc.predicate.GatewayRequestPredicates.path;
+
+/**
+ * GatewayConfig
+ * ==============
+ * Route definitions for Spring Cloud Gateway MVC (Servlet-based, Spring Boot 4.x).
+ *
+ * NOTE: Spring Cloud Gateway MVC uses RouterFunction API (not RouteLocator).
+ *       This is fundamentally different from the WebFlux-based gateway.
+ *
+ * Route Table:
+ * ┌──────────────────────────┬──────────────────────────────────┬────────┐
+ * │ Incoming Path            │ Downstream Service (Eureka)      │ Port   │
+ * ├──────────────────────────┼──────────────────────────────────┼────────┤
+ * │ /api/zones/**            │ ZONE-MANAGEMENT-SERVICE          │ 8081   │
+ * │ /api/sensors/**          │ SENSOR-TELEMETRY-SERVICE         │ 8082   │
+ * │ /api/automation/**       │ AUTOMATION-CONTROL-SERVICE       │ 8083   │
+ * │ /api/crops/**            │ CROP-INVENTORY-SERVICE           │ 8084   │
+ * └──────────────────────────┴──────────────────────────────────┴────────┘
+ *
+ * lb:// prefix → Eureka load-balanced lookup (no hardcoded IPs)
+ * Circuit Breaker → falls back to /fallback/{service} if service is down
+ */
 @Configuration
 public class GatewayConfig {
 
+    // ── Route 1: Zone Management Service ────────────────────────────────────
     @Bean
-    public com.agms.apigateway.config.RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
-        return builder.routes()
-                // Zone Service Routes
-                .route("zone-service", r -> r
-                        .path("/api/zones/**")
-                        .filters(f -> f
-                                .circuitBreaker(config -> config
-                                        .setName("zoneServiceBreaker")
-                                        .setFallbackUri("forward:/fallback/zones"))
-                                .retry(config -> config
-                                        .setRetries(3)
-                                        .setStatuses(HttpStatus.BAD_GATEWAY, HttpStatus.SERVICE_UNAVAILABLE)
-                                        .setMethods(org.springframework.http.HttpMethod.GET,
-                                                org.springframework.http.HttpMethod.POST))
-                                .addRequestHeader("X-Request-Start", String.valueOf(System.currentTimeMillis()))
-                                .addResponseHeader("X-Service-Name", "zone-service")
-                                .removeRequestHeader("Cookie"))
-                        .uri("lb://ZONE-SERVICE"))
+    public RouterFunction<ServerResponse> zoneRoute() {
+        return GatewayRouterFunctions.route("zone-management-service")
+                .route(path("/api/zones/**"),
+                        HandlerFunctions.http())
+                .filter(LoadBalancerFilterFunctions.lb("ZONE-MANAGEMENT-SERVICE"))
+                .filter(CircuitBreakerFilterFunctions.circuitBreaker(
+                        "zoneCB",
+                        URI.create("forward:/fallback/zone")))
+                .build();
+    }
 
-                // Sensor Service Routes
-                .route("sensor-service", r -> r
-                        .path("/api/sensors/**")
-                        .filters(f -> f
-                                .circuitBreaker(config -> config
-                                        .setName("sensorServiceBreaker")
-                                        .setFallbackUri("forward:/fallback/sensors"))
-                                .retry(config -> config
-                                        .setRetries(2)
-                                        .setStatuses(HttpStatus.BAD_GATEWAY, HttpStatus.SERVICE_UNAVAILABLE)
-                                        .setMethods(org.springframework.http.HttpMethod.GET))
-                                .addResponseHeader("X-Service-Name", "sensor-service")
-                                .removeRequestHeader("Cookie"))
-                        .uri("lb://SENSOR-SERVICE"))
+    // ── Route 2: Sensor Telemetry Service ───────────────────────────────────
+    @Bean
+    public RouterFunction<ServerResponse> sensorRoute() {
+        return GatewayRouterFunctions.route("sensor-telemetry-service")
+                .route(path("/api/sensors/**"),
+                        HandlerFunctions.http())
+                .filter(LoadBalancerFilterFunctions.lb("SENSOR-TELEMETRY-SERVICE"))
+                .filter(CircuitBreakerFilterFunctions.circuitBreaker(
+                        "sensorCB",
+                        URI.create("forward:/fallback/sensor")))
+                .build();
+    }
 
-                // Automation Service Routes
-                .route("automation-service", r -> r
-                        .path("/api/automation/**")
-                        .filters(f -> f
-                                .circuitBreaker(config -> config
-                                        .setName("automationServiceBreaker")
-                                        .setFallbackUri("forward:/fallback/automation"))
-                                .retry(config -> config
-                                        .setRetries(2)
-                                        .setStatuses(HttpStatus.BAD_GATEWAY, HttpStatus.SERVICE_UNAVAILABLE)
-                                        .setMethods(org.springframework.http.HttpMethod.GET,
-                                                org.springframework.http.HttpMethod.POST))
-                                .addResponseHeader("X-Service-Name", "automation-service")
-                                .removeRequestHeader("Cookie"))
-                        .uri("lb://AUTOMATION-SERVICE"))
+    // ── Route 3: Automation & Control Service ───────────────────────────────
+    @Bean
+    public RouterFunction<ServerResponse> automationRoute() {
+        return GatewayRouterFunctions.route("automation-control-service")
+                .route(path("/api/automation/**"),
+                        HandlerFunctions.http())
+                .filter(LoadBalancerFilterFunctions.lb("AUTOMATION-CONTROL-SERVICE"))
+                .filter(CircuitBreakerFilterFunctions.circuitBreaker(
+                        "automationCB",
+                        URI.create("forward:/fallback/automation")))
+                .build();
+    }
 
-                // Crop Service Routes
-                .route("crop-service", r -> r
-                        .path("/api/crops/**")
-                        .filters(f -> f
-                                .circuitBreaker(config -> config
-                                        .setName("cropServiceBreaker")
-                                        .setFallbackUri("forward:/fallback/crops"))
-                                .retry(config -> config
-                                        .setRetries(2)
-                                        .setStatuses(HttpStatus.BAD_GATEWAY, HttpStatus.SERVICE_UNAVAILABLE)
-                                        .setMethods(org.springframework.http.HttpMethod.GET,
-                                                org.springframework.http.HttpMethod.POST,
-                                                org.springframework.http.HttpMethod.PUT))
-                                .addResponseHeader("X-Service-Name", "crop-service")
-                                .removeRequestHeader("Cookie"))
-                        .uri("lb://CROP-SERVICE"))
-
-                // Auth Service Routes (Public - No JWT)
-                .route("auth-service", r -> r
-                        .path("/auth/**")
-                        .filters(f -> f
-                                .removeRequestHeader("Cookie")
-                                .removeRequestHeader("Authorization")
-                                .circuitBreaker(config -> config
-                                        .setName("authServiceBreaker")
-                                        .setFallbackUri("forward:/fallback/auth"))
-                                .retry(config -> config
-                                        .setRetries(3)
-                                        .setStatuses(HttpStatus.BAD_GATEWAY, HttpStatus.SERVICE_UNAVAILABLE)
-                                        .setMethods(org.springframework.http.HttpMethod.POST))
-                                .addResponseHeader("X-Service-Name", "auth-service"))
-                        .uri("lb://AUTH-SERVICE"))
-
-                // Eureka Dashboard Route
-                .route("eureka-dashboard", r -> r
-                        .path("/eureka/**")
-                        .filters(f -> f
-                                .setPath("/")
-                                .removeRequestHeader("Cookie"))
-                        .uri("http://localhost:8761"))
-
-                // Test Public Routes
-                .route("test-public", r -> r
-                        .path("/api/test/public/**")
-                        .filters(f -> f
-                                .addResponseHeader("X-Service-Name", "test-public"))
-                        .uri("lb://API-GATEWAY"))
-
-                // Test Secured Routes
-                .route("test-secured", r -> r
-                        .path("/api/test/secured/**")
-                        .filters(f -> f
-                                .addResponseHeader("X-Service-Name", "test-secured"))
-                        .uri("lb://API-GATEWAY"))
-
+    // ── Route 4: Crop Inventory Service ─────────────────────────────────────
+    @Bean
+    public RouterFunction<ServerResponse> cropRoute() {
+        return GatewayRouterFunctions.route("crop-inventory-service")
+                .route(path("/api/crops/**"),
+                        HandlerFunctions.http())
+                .filter(LoadBalancerFilterFunctions.lb("CROP-INVENTORY-SERVICE"))
+                .filter(CircuitBreakerFilterFunctions.circuitBreaker(
+                        "cropCB",
+                        URI.create("forward:/fallback/crop")))
                 .build();
     }
 }

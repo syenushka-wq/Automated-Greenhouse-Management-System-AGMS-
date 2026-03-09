@@ -1,36 +1,103 @@
 server:
-port: 8080
+  port: 8080
 
 spring:
   application:
     name: api-gateway
-  main:
-    web-application-type: servlet
 
+  # ─── Spring Cloud Config Client ─────────────────────────────────────────
+  config:
+    import: optional:configserver:http://localhost:8888
+
+  # ─── Spring Cloud Gateway MVC ───────────────────────────────────────────
+  cloud:
+    gateway:
+      mvc:
+        # Enable service discovery based routing
+        routes:
+        # Routes are also defined programmatically in GatewayConfig.java
+        # You can define them here in YAML as an alternative or supplement
+
+    # Eureka-based load balancer
+    loadbalancer:
+      ribbon:
+        enabled: false
+
+  # ─── Security ────────────────────────────────────────────────────────────
+  security:
+    # Disable default login page (we use JWT, not form login)
+    user:
+      name: disabled
+      password: disabled
+
+# ─── Eureka Client ──────────────────────────────────────────────────────────
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
-    register-with-eureka: true
     fetch-registry: true
+    register-with-eureka: true
   instance:
-    hostname: localhost
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
 
+# ─── JWT ────────────────────────────────────────────────────────────────────
 jwt:
-  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-  expiration: 3600000
+  # IMPORTANT: Must be at least 256 bits (32 characters) for HMAC-SHA256
+  # Change this in production! Use environment variable: JWT_SECRET
+  secret: agms-super-secret-jwt-key-must-be-at-least-256-bits-long-change-in-production
 
-logging:
-  level:
-    com.agms.apigateway: DEBUG
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.security: DEBUG
-
+# ─── Actuator ───────────────────────────────────────────────────────────────
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health, info, metrics, prometheus, gateway
   endpoint:
     health:
       show-details: always
+    gateway:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# ─── Resilience4j Circuit Breaker ───────────────────────────────────────────
+resilience4j:
+  circuitbreaker:
+    instances:
+      zoneCB:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+      sensorCB:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      automationCB:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      cropCB:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+  timelimiter:
+    instances:
+      zoneCB:
+        timeout-duration: 5s
+      sensorCB:
+        timeout-duration: 5s
+      automationCB:
+        timeout-duration: 5s
+      cropCB:
+        timeout-duration: 5s
+
+# ─── Logging ────────────────────────────────────────────────────────────────
+logging:
+  level:
+    com.agms.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: INFO
