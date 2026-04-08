@@ -16,7 +16,7 @@ public class RouteConfig {
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
 
-                // Zone Service Routes
+                // Zone Service
                 .route("zone-service", r -> r
                         .path("/api/zones/**")
                         .and().method(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.DELETE)
@@ -32,9 +32,9 @@ public class RouteConfig {
                                 .addRequestHeader("X-Request-Start", String.valueOf(System.currentTimeMillis()))
                                 .addResponseHeader("X-Service-Name", "zone-service")
                                 .removeRequestHeader("Cookie"))
-                        .uri("lb://ZONE-SERVICE"))
+                        .uri("lb://zone-service"))
 
-                // Sensor Service Routes
+                // Sensor Service
                 .route("sensor-service", r -> r
                         .path("/api/sensors/**")
                         .and().method(HttpMethod.GET)
@@ -48,9 +48,9 @@ public class RouteConfig {
                                         .setMethods(HttpMethod.GET))
                                 .addResponseHeader("X-Service-Name", "sensor-service")
                                 .removeRequestHeader("Cookie"))
-                        .uri("lb://SENSOR-SERVICE"))
+                        .uri("lb://sensor-service"))
 
-                // Automation Service Routes
+                // Automation Service
                 .route("automation-service", r -> r
                         .path("/api/automation/**")
                         .and().method(HttpMethod.GET, HttpMethod.POST)
@@ -64,9 +64,9 @@ public class RouteConfig {
                                         .setMethods(HttpMethod.GET, HttpMethod.POST))
                                 .addResponseHeader("X-Service-Name", "automation-service")
                                 .removeRequestHeader("Cookie"))
-                        .uri("lb://AUTOMATION-SERVICE"))
+                        .uri("lb://automation-service"))
 
-                // Crop Service Routes
+                // Crop Service
                 .route("crop-service", r -> r
                         .path("/api/crops/**")
                         .and().method(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT)
@@ -80,9 +80,9 @@ public class RouteConfig {
                                         .setMethods(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT))
                                 .addResponseHeader("X-Service-Name", "crop-service")
                                 .removeRequestHeader("Cookie"))
-                        .uri("lb://CROP-SERVICE"))
+                        .uri("lb://crop-service"))
 
-                // Auth Service Routes (Public)
+                // Auth Service (Public)
                 .route("auth-service", r -> r
                         .path("/auth/**")
                         .and().method(HttpMethod.POST)
@@ -97,29 +97,25 @@ public class RouteConfig {
                                 .removeRequestHeader("Cookie")
                                 .removeRequestHeader("Authorization")
                                 .addResponseHeader("X-Service-Name", "auth-service"))
-                        .uri("lb://AUTH-SERVICE"))
+                        .uri("lb://auth-service"))
 
-                // Eureka Dashboard Route
+                // Eureka Dashboard
                 .route("eureka-dashboard", r -> r
                         .path("/eureka/**")
-                        .filters(f -> f
-                                .setPath("/")
-                                .removeRequestHeader("Cookie"))
+                        .filters(f -> f.removeRequestHeader("Cookie"))
                         .uri("http://localhost:8761"))
 
-                // Test Public Routes
+                // Test Public Route (redirect to a service, not gateway itself)
                 .route("test-public", r -> r
                         .path("/api/test/public/**")
-                        .filters(f -> f
-                                .addResponseHeader("X-Service-Name", "test-public"))
-                        .uri("lb://API-GATEWAY"))
+                        .filters(f -> f.addResponseHeader("X-Service-Name", "test-public"))
+                        .uri("lb://zone-service"))
 
-                // Test Secured Routes
+                // Test Secured Route (redirect to a service, not gateway itself)
                 .route("test-secured", r -> r
                         .path("/api/test/secured/**")
-                        .filters(f -> f
-                                .addResponseHeader("X-Service-Name", "test-secured"))
-                        .uri("lb://API-GATEWAY"))
+                        .filters(f -> f.addResponseHeader("X-Service-Name", "test-secured"))
+                        .uri("lb://sensor-service"))
 
                 .build();
     }
