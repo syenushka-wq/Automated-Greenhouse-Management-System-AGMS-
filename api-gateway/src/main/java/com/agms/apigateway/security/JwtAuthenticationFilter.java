@@ -1,34 +1,30 @@
 package com.agms.apigateway.security;
 
 import com.agms.apigateway.util.JwtUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.SignatureException;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebFilter;
+import org.springframework.web.server.WebFilterChain;
+import reactor.core.publisher.Mono;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+public class JwtAuthenticationFilter implements WebFilter {
 
     private final JwtUtil jwtUtil;
-    private final ObjectMapper objectMapper;
 
     private static final String[] PUBLIC_PATHS = {
             "/actuator",
@@ -38,34 +34,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     };
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
-            throws ServletException, IOException {
-
-        String requestPath = request.getRequestURI();
+    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        ServerHttpRequest request = exchange.getRequest();
+        String requestPath = request.getURI().getPath();
 
         // Public endpoints → skip authentication
         if (isPublicPath(requestPath)) {
-            filterChain.doFilter(request, response);
-            return;
+            return chain.filter(exchange);
         }
 
         // Extract Authorization header
-        String authHeader = request.getHeader("Authorization");
+        String authHeader = request.getHeaders().getFirst("Authorization");
 
         if (authHeader == null || authHeader.isBlank()) {
             log.warn("[Gateway] Missing Authorization header → {}", requestPath);
-            writeErrorResponse(response, HttpStatus.UNAUTHORIZED,
+            return writeErrorResponse(exchange.getResponse(), HttpStatus.UNAUTHORIZED,
                     "Authorization header is missing");
-            return;
         }
 
         if (!authHeader.startsWith("Bearer ")) {
             log.warn("[Gateway] Authorization header must start with 'Bearer ' → {}", requestPath);
-            writeErrorResponse(response, HttpStatus.UNAUTHORIZED,
+            return writeErrorResponse(exchange.getResponse(), HttpStatus.UNAUTHORIZED,
                     "Authorization header must start with 'Bearer '");
-            return;
         }
 
         String token = authHeader.substring(7);
@@ -73,24 +63,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Validate JWT
         try {
             jwtUtil.validateToken(token);
-
             String username = jwtUtil.extractUsername(token);
-            request.setAttribute("X-Auth-User", username);
 
             log.debug("[Gateway] JWT valid for user '{}' → {}", username, requestPath);
 
-            filterChain.doFilter(request, response);
+            // Pass username downstream via request header
+            ServerHttpRequest mutatedRequest = request.mutate()
+                    .header("X-Auth-User", username)
+                    .build();
+
+            return chain.filter(exchange.mutate().request(mutatedRequest).build());
 
         } catch (ExpiredJwtException ex) {
-            writeErrorResponse(response, HttpStatus.UNAUTHORIZED, "JWT token has expired");
+            return writeErrorResponse(exchange.getResponse(), HttpStatus.UNAUTHORIZED, "JWT token has expired");
         } catch (MalformedJwtException ex) {
-            writeErrorResponse(response, HttpStatus.UNAUTHORIZED, "JWT token is malformed");
+            return writeErrorResponse(exchange.getResponse(), HttpStatus.UNAUTHORIZED, "JWT token is malformed");
         } catch (SignatureException ex) {
-            writeErrorResponse(response, HttpStatus.UNAUTHORIZED, "JWT signature is invalid");
+            return writeErrorResponse(exchange.getResponse(), HttpStatus.UNAUTHORIZED, "JWT signature is invalid");
         } catch (UnsupportedJwtException ex) {
-            writeErrorResponse(response, HttpStatus.UNAUTHORIZED, "JWT token is unsupported");
+            return writeErrorResponse(exchange.getResponse(), HttpStatus.UNAUTHORIZED, "JWT token is unsupported");
         } catch (IllegalArgumentException ex) {
-            writeErrorResponse(response, HttpStatus.UNAUTHORIZED, "JWT token is empty");
+            return writeErrorResponse(exchange.getResponse(), HttpStatus.UNAUTHORIZED, "JWT token is empty");
         }
     }
 
@@ -101,19 +94,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return false;
     }
 
-    private void writeErrorResponse(HttpServletResponse response,
-                                    HttpStatus status,
-                                    String message) throws IOException {
+    private Mono<Void> writeErrorResponse(ServerHttpResponse response,
+                                          HttpStatus status,
+                                          String message) {
+        response.setStatusCode(status);
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-        response.setStatus(status.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        String body = String.format(
+                "{\"status\":%d,\"error\":\"%s\",\"message\":\"%s\",\"timestamp\":\"%s\"}",
+                status.value(), status.getReasonPhrase(), message, LocalDateTime.now()
+        );
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("status", status.value());
-        body.put("error", status.getReasonPhrase());
-        body.put("message", message);
-        body.put("timestamp", LocalDateTime.now().toString());
-
-        objectMapper.writeValue(response.getWriter(), body);
+        var buffer = response.bufferFactory().wrap(body.getBytes());
+        return response.writeWith(Mono.just(buffer));
     }
 }

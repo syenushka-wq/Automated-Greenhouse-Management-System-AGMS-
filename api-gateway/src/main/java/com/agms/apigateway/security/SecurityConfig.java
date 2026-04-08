@@ -1,79 +1,55 @@
 package com.agms.apigateway.security;
 
-import com.agms.apigateway.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.cors.reactive.CorsConfigurationSource;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-/**
- * SecurityConfig
- * ===============
- * Spring Security configuration for the API Gateway.
- *
- * Strategy:
- *   - Stateless session (JWT, no HttpSession)
- *   - CSRF disabled (REST API — no browser forms)
- *   - All /api/** routes require a valid JWT
- *   - Actuator + fallback endpoints are public
- *   - JwtAuthenticationFilter runs BEFORE Spring Security's UsernamePasswordAuthenticationFilter
- */
 @Configuration
-@EnableWebSecurity
+@EnableWebFluxSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                // ── Disable CSRF (stateless REST API) ────────────────────────────
-                .csrf(AbstractHttpConfigurer::disable)
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+        return http
+                // Disable CSRF (stateless REST API)
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
 
-                // ── CORS ─────────────────────────────────────────────────────────
+                // Disable default auth mechanisms
+                .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+                .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
+
+                // CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // ── Session: STATELESS (JWT, no server-side session) ─────────────
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // ── Authorization rules ───────────────────────────────────────────
-                .authorizeHttpRequests(auth -> auth
-                        // Public endpoints — no JWT required
-                        .requestMatchers(
-                                "/actuator/**",
-                                "/fallback/**"
-                        ).permitAll()
-                        // All other requests MUST have a valid JWT
-                        .anyRequest().authenticated()
+                // Authorization rules
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/actuator/**", "/fallback/**").permitAll()
+                        .anyExchange().authenticated()
                 )
 
-                // ── Add JWT filter before Spring's default auth filter ────────────
-                .addFilterBefore(jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                // Add our JWT filter at the right position in the reactive filter chain
+                .addFilterAt(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
 
-        return http.build();
+                .build();
     }
 
-    /**
-     * CORS configuration — allow all origins in dev, restrict in production.
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // TODO: Change to specific domain in production (e.g., "https://agms-dashboard.com")
+        // TODO: Restrict to specific domain in production
         config.setAllowedOrigins(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of(
