@@ -1,0 +1,19 @@
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:zonedb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.H2Dialect
+
+external:
+  api:
+    base-url: http://104.211.95.241:8080/api
+    username: "agms_system"
+    password: "secure123"

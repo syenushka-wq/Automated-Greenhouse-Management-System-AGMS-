@@ -29,11 +29,10 @@ logging:
     org.springframework: INFO
     com.agms.zoneservice: DEBUG
 
-    management:
-      endpoints:
-        web:
-          exposure:
-            include: health, info
-      endpoint:
-        health:
-          show-details: always
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  health:
+    show-details: always

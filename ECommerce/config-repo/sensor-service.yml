@@ -1,0 +1,11 @@
+server:
+  port: 8082
+
+external:
+  api:
+    base-url: http://104.211.95.241:8080/api
+    username: "agms_system"
+    password: "secure123"
+
+scheduler:
+  fixed-delay: 10000
