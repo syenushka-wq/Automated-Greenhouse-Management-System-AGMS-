@@ -4,5 +4,4 @@ import com.agms.sensorservice.model.SensorDTO;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SensorRepository extends JpaRepository<SensorDTO, String> {
-    // Add custom queries if needed
 }
